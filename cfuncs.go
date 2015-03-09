@@ -58,10 +58,14 @@ get_decoder_rate(FLAC__StreamMetadata *metadata)
      return metadata->data.stream_info.sample_rate;
 }
 
-extern int
-get_audio_sample(const FLAC__int32 **buffer, int off, int ch)
+extern void
+get_audio_samples(int32_t *output, const FLAC__int32 **input,
+                  unsigned int blocksize, unsigned int channels)
 {
-     return buffer[ch][off];
+    unsigned int i, j, samples = blocksize * channels;
+    for (i = 0; i < blocksize; i++)
+        for (j = 0; j < channels; j++)
+            output[i * channels + j] = input[j][i];
 }
 
 */

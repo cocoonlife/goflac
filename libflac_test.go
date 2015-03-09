@@ -134,3 +134,51 @@ func TestRoundTrip(t *testing.T) {
 
 	os.Remove(outputFile)
 }
+
+func TestRoundTripStereo(t *testing.T) {
+	a := assert.New(t)
+
+	inputFile := "data/sine16-12.flac"
+	outputFile := "data/test.flac"
+
+	d, err := NewDecoder(inputFile)
+
+	a.Equal(err, nil, "err is nil")
+
+	e, err := NewEncoder(outputFile, d.Channels, d.Depth, d.Rate)
+
+	samples := 0
+
+	for {
+		f, err := d.ReadFrame()
+		if (err == nil || err == io.EOF) {
+			if (f != nil) {
+				_ = e.WriteFrame(*f)
+				samples = samples + len(f.Buffer)
+			}
+		} else {
+			a.Equal(err, nil, "error reported")
+			break
+		}
+
+		if (err == io.EOF) {
+			break
+		}
+	}
+
+	a.Equal(samples, 400000, "all samples read")
+	d.Close()
+	e.Close()
+
+	inFile, err := os.Open(inputFile)
+	a.Equal(err, nil, "err is nil")
+	outFile, err := os.Open(outputFile)
+	a.Equal(err, nil, "err is nil")
+
+	inData, _ := ioutil.ReadAll(inFile)
+	outData, _ := ioutil.ReadAll(outFile)
+
+	a.Equal(md5.Sum(inData), md5.Sum(outData), "files md5sum the same")
+
+	os.Remove(outputFile)
+}

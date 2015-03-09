@@ -60,8 +60,9 @@ get_decoder_depth(FLAC__StreamMetadata *metadata);
 extern int
 get_decoder_rate(FLAC__StreamMetadata *metadata);
 
-extern int
-get_audio_sample(const FLAC__int32 **buffer, int off, int ch);
+extern void
+get_audio_samples(int32_t *output, const FLAC__int32 **input,
+                  unsigned int blocksize, unsigned int channels);
 
 */
 import "C"
@@ -119,12 +120,8 @@ func decoderWriteCallback(d *C.FLAC__StreamDecoder, frame *C.FLAC__Frame, buffer
 	f.Channels = decoder.Channels
 	f.Depth = decoder.Depth
 	f.Rate = decoder.Rate
-	f.Buffer = make([]int32, blocksize)
-	for i := 0; i < blocksize; i++ {
-		for ch := 0; ch < decoder.Channels; ch++ {
-			f.Buffer[i + ch] = int32(C.get_audio_sample(buffer, C.int(i), C.int(ch)))
-		}
-	}
+	f.Buffer = make([]int32, blocksize * decoder.Channels)
+	C.get_audio_samples((*C.int32_t)(&f.Buffer[0]), buffer, C.uint(blocksize), C.uint(decoder.Channels))
 	return C.FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE
 }
 

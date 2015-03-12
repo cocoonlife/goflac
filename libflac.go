@@ -70,28 +70,28 @@ import "C"
 // Frame is an interleaved buffer of audio data with the specified parameters.
 type Frame struct {
 	Channels int
-	Depth int
-	Rate int
-	Buffer []int32
+	Depth    int
+	Rate     int
+	Buffer   []int32
 }
 
 // Decoder is a FLAC decoder.
 type Decoder struct {
-	d *C.FLAC__StreamDecoder
+	d        *C.FLAC__StreamDecoder
 	Channels int
-	Depth int
-	Rate int
-	error bool
+	Depth    int
+	Rate     int
+	error    bool
 	errorStr string
-	frame *Frame
+	frame    *Frame
 }
 
 // Encoder is a FLAC encoder.
 type Encoder struct {
-	e *C.FLAC__StreamEncoder
+	e        *C.FLAC__StreamEncoder
 	Channels int
-	Depth int
-	Rate int
+	Depth    int
+	Rate     int
 }
 
 //export decoderErrorCallback
@@ -112,7 +112,7 @@ func decoderMetadataCallback(d *C.FLAC__StreamDecoder, metadata *C.FLAC__StreamM
 }
 
 //export decoderWriteCallback
-func decoderWriteCallback(d *C.FLAC__StreamDecoder, frame *C.FLAC__Frame, buffer **C.FLAC__int32, data unsafe.Pointer) (C.FLAC__StreamDecoderWriteStatus) {
+func decoderWriteCallback(d *C.FLAC__StreamDecoder, frame *C.FLAC__Frame, buffer **C.FLAC__int32, data unsafe.Pointer) C.FLAC__StreamDecoderWriteStatus {
 	decoder := (*Decoder)(data)
 	blocksize := int(frame.header.blocksize)
 	decoder.frame = new(Frame)
@@ -120,7 +120,7 @@ func decoderWriteCallback(d *C.FLAC__StreamDecoder, frame *C.FLAC__Frame, buffer
 	f.Channels = decoder.Channels
 	f.Depth = decoder.Depth
 	f.Rate = decoder.Rate
-	f.Buffer = make([]int32, blocksize * decoder.Channels)
+	f.Buffer = make([]int32, blocksize*decoder.Channels)
 	C.get_audio_samples((*C.int32_t)(&f.Buffer[0]), buffer, C.uint(blocksize), C.uint(decoder.Channels))
 	return C.FLAC__STREAM_DECODER_WRITE_STATUS_CONTINUE
 }
@@ -202,7 +202,7 @@ func (e *Encoder) WriteFrame(f Frame) (err error) {
 	if f.Channels != e.Channels || f.Depth != e.Depth || f.Rate != e.Rate {
 		return errors.New("frame type does not match encoder")
 	}
-	ret := C.FLAC__stream_encoder_process_interleaved(e.e, (*C.FLAC__int32)(&f.Buffer[0]), C.uint(len(f.Buffer) / e.Channels))
+	ret := C.FLAC__stream_encoder_process_interleaved(e.e, (*C.FLAC__int32)(&f.Buffer[0]), C.uint(len(f.Buffer)/e.Channels))
 	if ret == 0 {
 		return errors.New("error encoding frame")
 	}

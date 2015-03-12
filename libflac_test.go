@@ -42,8 +42,8 @@ func TestDecode(t *testing.T) {
 	for {
 		f, err := d.ReadFrame()
 
-		if (err == nil || err == io.EOF) {
-			if (f != nil) {
+		if err == nil || err == io.EOF {
+			if f != nil {
 				samples = samples + len(f.Buffer)
 			}
 		} else {
@@ -51,7 +51,7 @@ func TestDecode(t *testing.T) {
 			break
 		}
 
-		if (err == io.EOF) {
+		if err == io.EOF {
 			break
 		}
 	}
@@ -76,7 +76,7 @@ func TestEncode(t *testing.T) {
 	a.Error(err, "channels mismatch")
 
 	f.Channels = 2
-	f.Buffer = make([]int32, 2 * 100)
+	f.Buffer = make([]int32, 2*100)
 
 	err = e.WriteFrame(f)
 
@@ -103,8 +103,8 @@ func TestRoundTrip(t *testing.T) {
 
 	for {
 		f, err := d.ReadFrame()
-		if (err == nil || err == io.EOF) {
-			if (f != nil) {
+		if err == nil || err == io.EOF {
+			if f != nil {
 				_ = e.WriteFrame(*f)
 				samples = samples + len(f.Buffer)
 			}
@@ -113,7 +113,7 @@ func TestRoundTrip(t *testing.T) {
 			break
 		}
 
-		if (err == io.EOF) {
+		if err == io.EOF {
 			break
 		}
 	}
@@ -151,8 +151,8 @@ func TestRoundTripStereo(t *testing.T) {
 
 	for {
 		f, err := d.ReadFrame()
-		if (err == nil || err == io.EOF) {
-			if (f != nil) {
+		if err == nil || err == io.EOF {
+			if f != nil {
 				_ = e.WriteFrame(*f)
 				samples = samples + len(f.Buffer)
 			}
@@ -161,7 +161,7 @@ func TestRoundTripStereo(t *testing.T) {
 			break
 		}
 
-		if (err == io.EOF) {
+		if err == io.EOF {
 			break
 		}
 	}

@@ -14,7 +14,7 @@ import (
 )
 
 /*
-#cgo LDFLAGS: -lFLAC
+#cgo pkg-config: flac
 #include <stdlib.h>
 
 #include "FLAC/stream_decoder.h"

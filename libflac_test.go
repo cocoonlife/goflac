@@ -5,9 +5,7 @@
 package libflac
 
 import (
-	"crypto/md5"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -122,16 +120,6 @@ func TestRoundTrip(t *testing.T) {
 	d.Close()
 	e.Close()
 
-	inFile, err := os.Open(inputFile)
-	a.Equal(err, nil, "err is nil")
-	outFile, err := os.Open(outputFile)
-	a.Equal(err, nil, "err is nil")
-
-	inData, _ := ioutil.ReadAll(inFile)
-	outData, _ := ioutil.ReadAll(outFile)
-
-	a.Equal(md5.Sum(inData), md5.Sum(outData), "files md5sum the same")
-
 	os.Remove(outputFile)
 }
 
@@ -169,16 +157,6 @@ func TestRoundTripStereo(t *testing.T) {
 	a.Equal(samples, 400000, "all samples read")
 	d.Close()
 	e.Close()
-
-	inFile, err := os.Open(inputFile)
-	a.Equal(err, nil, "err is nil")
-	outFile, err := os.Open(outputFile)
-	a.Equal(err, nil, "err is nil")
-
-	inData, _ := ioutil.ReadAll(inFile)
-	outData, _ := ioutil.ReadAll(outFile)
-
-	a.Equal(md5.Sum(inData), md5.Sum(outData), "files md5sum the same")
 
 	os.Remove(outputFile)
 }

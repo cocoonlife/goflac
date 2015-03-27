@@ -176,6 +176,12 @@ func (d *Decoder) ReadFrame() (f *Frame, err error) {
 
 // NewEncoder creates a new Encoder object.
 func NewEncoder(name string, channels int, depth int, rate int) (e *Encoder, err error) {
+	if channels == 0 {
+		return nil, errors.New("channels must be greater than 0")
+	}
+	if !(depth == 16 || depth == 24) {
+		return nil, errors.New("depth must be 16 or 24")
+	}
 	e = new(Encoder)
 	e.e = C.FLAC__stream_encoder_new()
 	if e.e == nil {
@@ -201,6 +207,9 @@ func NewEncoder(name string, channels int, depth int, rate int) (e *Encoder, err
 func (e *Encoder) WriteFrame(f Frame) (err error) {
 	if f.Channels != e.Channels || f.Depth != e.Depth || f.Rate != e.Rate {
 		return errors.New("frame type does not match encoder")
+	}
+	if len(f.Buffer) == 0 {
+		return
 	}
 	ret := C.FLAC__stream_encoder_process_interleaved(e.e, (*C.FLAC__int32)(&f.Buffer[0]), C.uint(len(f.Buffer)/e.Channels))
 	if ret == 0 {

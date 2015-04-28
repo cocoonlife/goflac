@@ -16,8 +16,8 @@ func TestDecode(t *testing.T) {
 	a := assert.New(t)
 
 	d, err := NewDecoder("data/nonexistent.flac")
-
 	a.Equal(d, (*Decoder)(nil), "decoder is nil")
+	a.NotNil(err, "err is not nil")
 
 	d, err = NewDecoder("data/sine24-00.flac")
 
@@ -61,9 +61,13 @@ func TestDecode(t *testing.T) {
 func TestEncode(t *testing.T) {
 	a := assert.New(t)
 
+	e, err := NewEncoder("not-existdir/foo.flac", 2, 24, 48000)
+	a.Equal(e, (*Encoder)(nil), "encoder is nil")
+	a.NotNil(err, "err is not nil")
+
 	fileName := "data/test.flac"
 
-	e, err := NewEncoder(fileName, 2, 24, 48000)
+	e, err = NewEncoder(fileName, 2, 24, 48000)
 
 	a.Equal(err, nil, "err is nil")
 

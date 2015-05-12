@@ -25,28 +25,19 @@ extern void
 decoderErrorCallback_cgo(const FLAC__StreamDecoder *,
 		         FLAC__StreamDecoderErrorStatus,
 		         void *);
-typedef void (*decoderErrorCallbackFn)(const FLAC__StreamDecoder *,
-		                       FLAC__StreamDecoderErrorStatus,
-		                       void *);
 
 
 extern void
 decoderMetadataCallback_cgo(const FLAC__StreamDecoder *,
 			    const FLAC__StreamMetadata *,
 			    void *);
-typedef void (*decoderMetadataCallbackFn)(const FLAC__StreamDecoder *,
-		                          FLAC__StreamMetadata *,
-		                          void *);
 
 extern FLAC__StreamDecoderWriteStatus
 decoderWriteCallback_cgo(const FLAC__StreamDecoder *,
 		         const FLAC__Frame *,
 		         const FLAC__int32 **,
 		         void *);
-typedef FLAC__StreamDecoderWriteStatus (*decoderWriteCallbackFn)(const FLAC__StreamDecoder *,
-                                        const FLAC__Frame *,
-		                        const FLAC__int32 **,
-		                        void *);
+
 FLAC__StreamDecoderReadStatus
 decoderReadCallback_cgo(const FLAC__StreamDecoder *,
 		        const FLAC__byte *,
@@ -174,9 +165,9 @@ func NewDecoder(name string) (d *Decoder, err error) {
 	defer C.free(unsafe.Pointer(c))
 	runtime.SetFinalizer(d, (*Decoder).Close)
 	status := C.FLAC__stream_decoder_init_file(d.d, c,
-		(C.decoderWriteCallbackFn)(unsafe.Pointer(C.decoderWriteCallback_cgo)),
-		(C.decoderMetadataCallbackFn)(unsafe.Pointer(C.decoderMetadataCallback_cgo)),
-		(C.decoderErrorCallbackFn)(unsafe.Pointer(C.decoderErrorCallback_cgo)),
+		(C.FLAC__StreamDecoderWriteCallback)(unsafe.Pointer(C.decoderWriteCallback_cgo)),
+		(C.FLAC__StreamDecoderMetadataCallback)(unsafe.Pointer(C.decoderMetadataCallback_cgo)),
+		(C.FLAC__StreamDecoderErrorCallback)(unsafe.Pointer(C.decoderErrorCallback_cgo)),
 		unsafe.Pointer(d))
 	if status != C.FLAC__STREAM_DECODER_INIT_STATUS_OK {
 		return nil, errors.New("failed to open file")
@@ -200,9 +191,9 @@ func NewDecoderReader(reader io.ReadCloser) (d *Decoder, err error) {
 	status := C.FLAC__stream_decoder_init_stream(d.d,
 		(C.FLAC__StreamDecoderReadCallback)(unsafe.Pointer(C.decoderReadCallback_cgo)),
 		nil, nil, nil, nil,
-		(C.decoderWriteCallbackFn)(unsafe.Pointer(C.decoderWriteCallback_cgo)),
-		(C.decoderMetadataCallbackFn)(unsafe.Pointer(C.decoderMetadataCallback_cgo)),
-		(C.decoderErrorCallbackFn)(unsafe.Pointer(C.decoderErrorCallback_cgo)),
+		(C.FLAC__StreamDecoderWriteCallback)(unsafe.Pointer(C.decoderWriteCallback_cgo)),
+		(C.FLAC__StreamDecoderMetadataCallback)(unsafe.Pointer(C.decoderMetadataCallback_cgo)),
+		(C.FLAC__StreamDecoderErrorCallback)(unsafe.Pointer(C.decoderErrorCallback_cgo)),
 		unsafe.Pointer(d))
 	if status != C.FLAC__STREAM_DECODER_INIT_STATUS_OK {
 		return nil, errors.New("failed to open stream")

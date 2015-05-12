@@ -15,11 +15,11 @@ import (
 func TestDecode(t *testing.T) {
 	a := assert.New(t)
 
-	d, err := NewDecoder("data/nonexistent.flac")
+	d, err := NewDecoder("testdata/nonexistent.flac")
 	a.Equal(d, (*Decoder)(nil), "decoder is nil")
 	a.NotNil(err, "err is not nil")
 
-	d, err = NewDecoder("data/sine24-00.flac")
+	d, err = NewDecoder("testdata/sine24-00.flac")
 
 	a.Equal(err, nil, "err is nil")
 	a.Equal(d.Channels, 1, "channels is 1")
@@ -61,14 +61,14 @@ func TestDecode(t *testing.T) {
 func TestDecodeReader(t *testing.T) {
 	a := assert.New(t)
 
-	reader, _ := os.Open("data/nonexistent.flac")
+	reader, _ := os.Open("testdata/nonexistent.flac")
 
 	d, err := NewDecoderReader(reader)
 
 	a.Equal(d, (*Decoder)(nil), "decoder is nil")
 	a.Error(err)
 
-	reader, _ = os.Open("data/sine24-00.flac")
+	reader, _ = os.Open("testdata/sine24-00.flac")
 
 	d, err = NewDecoderReader(reader)
 
@@ -116,7 +116,7 @@ func TestEncode(t *testing.T) {
 	a.Equal(e, (*Encoder)(nil), "encoder is nil")
 	a.NotNil(err, "err is not nil")
 
-	fileName := "data/test.flac"
+	fileName := "testdata/test.flac"
 
 	e, err = NewEncoder(fileName, 2, 24, 48000)
 
@@ -143,8 +143,8 @@ func TestEncode(t *testing.T) {
 func TestRoundTrip(t *testing.T) {
 	a := assert.New(t)
 
-	inputFile := "data/sine24-00.flac"
-	outputFile := "data/test.flac"
+	inputFile := "testdata/sine24-00.flac"
+	outputFile := "testdata/test.flac"
 
 	d, err := NewDecoder(inputFile)
 
@@ -181,8 +181,8 @@ func TestRoundTrip(t *testing.T) {
 func TestRoundTripStereo(t *testing.T) {
 	a := assert.New(t)
 
-	inputFile := "data/sine16-12.flac"
-	outputFile := "data/test.flac"
+	inputFile := "testdata/sine16-12.flac"
+	outputFile := "testdata/test.flac"
 
 	d, err := NewDecoder(inputFile)
 
@@ -219,8 +219,8 @@ func TestRoundTripStereo(t *testing.T) {
 func TestRoundTripReaderWriter(t *testing.T) {
 	a := assert.New(t)
 
-	inputFile := "data/sine24-00.flac"
-	outputFile := "data/test.flac"
+	inputFile := "testdata/sine24-00.flac"
+	outputFile := "testdata/test.flac"
 
 	reader, _ := os.Open(inputFile)
 

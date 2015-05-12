@@ -34,6 +34,26 @@ decoderWriteCallback_cgo(const FLAC__StreamDecoder *decoder,
     return decoderWriteCallback(decoder, frame, buffer, data);
 }
 
+FLAC__StreamDecoderReadStatus
+decoderReadCallback_cgo(const FLAC__StreamDecoder *decoder,
+		        const FLAC__byte buffer[],
+			size_t *bytes,
+		        void *data)
+{
+    return decoderReadCallback(decoder, buffer, bytes, data);
+}
+
+FLAC__StreamEncoderWriteStatus
+encoderWriteCallback_cgo(const FLAC__StreamEncoder *encoder,
+			 const FLAC__byte buffer[],
+			 size_t bytes, unsigned samples,
+			 unsigned current_frame,
+		         void *data)
+{
+    return encoderWriteCallback(encoder, buffer, bytes, samples, current_frame,
+				data);
+}
+
 extern const char *
 get_decoder_error_str(FLAC__StreamDecoderErrorStatus status)
 {

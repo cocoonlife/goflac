@@ -58,6 +58,57 @@ func TestDecode(t *testing.T) {
 	d.Close()
 }
 
+func TestDecodeReader(t *testing.T) {
+	a := assert.New(t)
+
+	reader, _ := os.Open("data/nonexistent.flac")
+
+	d, err := NewDecoderReader(reader)
+
+	a.Equal(d, (*Decoder)(nil), "decoder is nil")
+	a.Error(err)
+
+	reader, _ = os.Open("data/sine24-00.flac")
+
+	d, err = NewDecoderReader(reader)
+
+	a.Equal(err, nil, "err is nil")
+	a.Equal(d.Channels, 1, "channels is 1")
+	a.Equal(d.Depth, 24, "depth is 24")
+	a.Equal(d.Rate, 48000, "depth is 48000")
+
+	samples := 0
+
+	f, err := d.ReadFrame()
+
+	a.Equal(err, nil, "err is nil")
+	a.Equal(f.Channels, 1, "channels is 1")
+	a.Equal(f.Depth, 24, "depth is 24")
+	a.Equal(f.Rate, 48000, "depth is 48000")
+
+	samples = samples + len(f.Buffer)
+
+	for {
+		f, err := d.ReadFrame()
+
+		if err == nil || err == io.EOF {
+			if f != nil {
+				samples = samples + len(f.Buffer)
+			}
+		} else {
+			a.Equal(err, nil, "error reported")
+			break
+		}
+
+		if err == io.EOF {
+			break
+		}
+	}
+
+	a.Equal(samples, 200000, "all samples read")
+	d.Close()
+}
+
 func TestEncode(t *testing.T) {
 	a := assert.New(t)
 
@@ -159,6 +210,48 @@ func TestRoundTripStereo(t *testing.T) {
 	}
 
 	a.Equal(samples, 400000, "all samples read")
+	d.Close()
+	e.Close()
+
+	os.Remove(outputFile)
+}
+
+func TestRoundTripReaderWriter(t *testing.T) {
+	a := assert.New(t)
+
+	inputFile := "data/sine24-00.flac"
+	outputFile := "data/test.flac"
+
+	reader, _ := os.Open(inputFile)
+
+	d, err := NewDecoderReader(reader)
+
+	a.Equal(err, nil, "err is nil")
+
+	writer, _ := os.Create(outputFile)
+
+	e, err := NewEncoderWriter(writer, d.Channels, d.Depth, d.Rate)
+
+	samples := 0
+
+	for {
+		f, err := d.ReadFrame()
+		if err == nil || err == io.EOF {
+			if f != nil {
+				_ = e.WriteFrame(*f)
+				samples = samples + len(f.Buffer)
+			}
+		} else {
+			a.Equal(err, nil, "error reported")
+			break
+		}
+
+		if err == io.EOF {
+			break
+		}
+	}
+
+	a.Equal(samples, 200000, "all samples read")
 	d.Close()
 	e.Close()
 

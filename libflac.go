@@ -51,6 +51,15 @@ encoderWriteCallback_cgo(const FLAC__StreamEncoder *,
 			 unsigned,
 		         void *);
 
+FLAC__StreamEncoderSeekStatus
+encoderSeekCallback_cgo(const FLAC__StreamEncoder *,
+			FLAC__uint64,
+		        void *);
+
+FLAC__StreamEncoderTellStatus
+encoderTellCallback_cgo(const FLAC__StreamEncoder *,
+			FLAC__uint64 *,
+		        void *);
 
 extern const char *
 get_decoder_error_str(FLAC__StreamDecoderErrorStatus status);
@@ -70,6 +79,12 @@ get_audio_samples(int32_t *output, const FLAC__int32 **input,
 
 */
 import "C"
+
+type FlacWriter interface {
+	io.Writer
+	io.Closer
+	io.Seeker
+}
 
 // Frame is an interleaved buffer of audio data with the specified parameters.
 type Frame struct {
@@ -94,7 +109,7 @@ type Decoder struct {
 // Encoder is a FLAC encoder.
 type Encoder struct {
 	e        *C.FLAC__StreamEncoder
-	writer   io.WriteCloser
+	writer   FlacWriter
 	Channels int
 	Depth    int
 	Rate     int
@@ -281,8 +296,29 @@ func encoderWriteCallback(e *C.FLAC__StreamEncoder, buffer *C.FLAC__byte, bytes 
 	return C.FLAC__STREAM_ENCODER_WRITE_STATUS_OK
 }
 
-// NewEncoderWriter creates a new Encoder object from a Writer.
-func NewEncoderWriter(writer io.WriteCloser, channels int, depth int, rate int) (e *Encoder, err error) {
+//export encoderSeekCallback
+func encoderSeekCallback(e *C.FLAC__StreamEncoder, absPos C.FLAC__uint64, data unsafe.Pointer) C.FLAC__StreamEncoderWriteStatus {
+	encoder := (*Encoder)(data)
+	_, err := encoder.writer.Seek(int64(absPos), 0)
+	if err != nil {
+		return C.FLAC__STREAM_ENCODER_SEEK_STATUS_ERROR
+	}
+	return C.FLAC__STREAM_ENCODER_SEEK_STATUS_OK
+}
+
+//export encoderTellCallback
+func encoderTellCallback(e *C.FLAC__StreamEncoder, absPos *C.FLAC__uint64, data unsafe.Pointer) C.FLAC__StreamEncoderWriteStatus {
+	encoder := (*Encoder)(data)
+	newPos, err := encoder.writer.Seek(0, 1)
+	if err != nil {
+		return C.FLAC__STREAM_ENCODER_TELL_STATUS_ERROR
+	}
+	*absPos = C.FLAC__uint64(newPos)
+	return C.FLAC__STREAM_ENCODER_TELL_STATUS_OK
+}
+
+// NewEncoderWriter creates a new Encoder object from a FlacWriter.
+func NewEncoderWriter(writer FlacWriter, channels int, depth int, rate int) (e *Encoder, err error) {
 	if channels == 0 {
 		return nil, errors.New("channels must be greater than 0")
 	}
@@ -300,7 +336,10 @@ func NewEncoderWriter(writer io.WriteCloser, channels int, depth int, rate int) 
 	C.FLAC__stream_encoder_set_bits_per_sample(e.e, C.uint(depth))
 	C.FLAC__stream_encoder_set_sample_rate(e.e, C.uint(rate))
 	status := C.FLAC__stream_encoder_init_stream(e.e,
-		(C.FLAC__StreamEncoderWriteCallback)(unsafe.Pointer(C.encoderWriteCallback_cgo)), nil, nil, nil, unsafe.Pointer(e))
+		(C.FLAC__StreamEncoderWriteCallback)(unsafe.Pointer(C.encoderWriteCallback_cgo)),
+		(C.FLAC__StreamEncoderSeekCallback)(unsafe.Pointer(C.encoderSeekCallback_cgo)),
+		(C.FLAC__StreamEncoderTellCallback)(unsafe.Pointer(C.encoderTellCallback_cgo)),
+		nil, unsafe.Pointer(e))
 	if status != C.FLAC__STREAM_ENCODER_INIT_STATUS_OK {
 		return nil, errors.New("failed to open file")
 	}

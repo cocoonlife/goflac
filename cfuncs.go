@@ -54,6 +54,22 @@ encoderWriteCallback_cgo(const FLAC__StreamEncoder *encoder,
 				data);
 }
 
+FLAC__StreamEncoderSeekStatus
+encoderSeekCallback_cgo(const FLAC__StreamEncoder *encoder,
+			FLAC__uint64 absolute_byte_offset,
+		        void *data)
+{
+    return encoderSeekCallback(encoder, absolute_byte_offset, data);
+}
+
+FLAC__StreamEncoderTellStatus
+encoderTellCallback_cgo(const FLAC__StreamEncoder *encoder,
+			FLAC__uint64 *absolute_byte_offset,
+		        void *data)
+{
+    return encoderTellCallback(encoder, absolute_byte_offset, data);
+}
+
 extern const char *
 get_decoder_error_str(FLAC__StreamDecoderErrorStatus status)
 {

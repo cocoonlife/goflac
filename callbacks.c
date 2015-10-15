@@ -1,20 +1,14 @@
-// Copyright 2015 Cocoon Alarm Ltd.
-//
-// See LICENSE file for terms and conditions.
-
-package libflac
-
-/*
-
 #include "FLAC/stream_decoder.h"
 #include "FLAC/stream_encoder.h"
+
+#include "_cgo_export.h"
 
 void
 decoderErrorCallback_cgo(const FLAC__StreamDecoder *decoder,
 		         FLAC__StreamDecoderErrorStatus status,
 		         void *data)
 {
-     decoderErrorCallback(decoder, status, data);
+    decoderErrorCallback((FLAC__StreamDecoder *)decoder, status, data);
 }
 
 void
@@ -22,7 +16,8 @@ decoderMetadataCallback_cgo(const FLAC__StreamDecoder *decoder,
 			    const FLAC__StreamMetadata *metadata,
 			    void *data)
 {
-    decoderMetadataCallback(decoder, metadata, data);
+    decoderMetadataCallback((FLAC__StreamDecoder *)decoder,
+			    (FLAC__StreamMetadata *)metadata, data);
 }
 
 FLAC__StreamDecoderWriteStatus
@@ -31,7 +26,9 @@ decoderWriteCallback_cgo(const FLAC__StreamDecoder *decoder,
 		         const FLAC__int32 **buffer,
 		         void *data)
 {
-    return decoderWriteCallback(decoder, frame, buffer, data);
+    return decoderWriteCallback((FLAC__StreamDecoder *)decoder,
+				(FLAC__Frame *)frame,
+				(FLAC__int32 **)buffer, data);
 }
 
 FLAC__StreamDecoderReadStatus
@@ -40,7 +37,9 @@ decoderReadCallback_cgo(const FLAC__StreamDecoder *decoder,
 			size_t *bytes,
 		        void *data)
 {
-    return decoderReadCallback(decoder, buffer, bytes, data);
+    return decoderReadCallback((FLAC__StreamDecoder *)decoder,
+			       (FLAC__byte *)buffer,
+			       bytes, data);
 }
 
 FLAC__StreamEncoderWriteStatus
@@ -50,8 +49,9 @@ encoderWriteCallback_cgo(const FLAC__StreamEncoder *encoder,
 			 unsigned current_frame,
 		         void *data)
 {
-    return encoderWriteCallback(encoder, buffer, bytes, samples, current_frame,
-				data);
+    return encoderWriteCallback((FLAC__StreamEncoder *)encoder,
+				(FLAC__byte *)buffer, bytes, samples,
+				current_frame, data);
 }
 
 FLAC__StreamEncoderSeekStatus
@@ -59,7 +59,8 @@ encoderSeekCallback_cgo(const FLAC__StreamEncoder *encoder,
 			FLAC__uint64 absolute_byte_offset,
 		        void *data)
 {
-    return encoderSeekCallback(encoder, absolute_byte_offset, data);
+    return encoderSeekCallback((FLAC__StreamEncoder *)encoder,
+			       absolute_byte_offset, data);
 }
 
 FLAC__StreamEncoderTellStatus
@@ -67,7 +68,8 @@ encoderTellCallback_cgo(const FLAC__StreamEncoder *encoder,
 			FLAC__uint64 *absolute_byte_offset,
 		        void *data)
 {
-    return encoderTellCallback(encoder, absolute_byte_offset, data);
+    return encoderTellCallback((FLAC__StreamEncoder *)encoder,
+			       absolute_byte_offset, data);
 }
 
 extern const char *
@@ -103,6 +105,3 @@ get_audio_samples(int32_t *output, const FLAC__int32 **input,
         for (j = 0; j < channels; j++)
             output[i * channels + j] = input[j][i];
 }
-
-*/
-import "C"

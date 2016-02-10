@@ -11,6 +11,7 @@ import (
 	"io"
 	"reflect"
 	"runtime"
+	"sync"
 	"unsafe"
 )
 
@@ -80,6 +81,64 @@ get_audio_samples(int32_t *output, const FLAC__int32 **input,
 */
 import "C"
 
+// Go 1.6 does not allow us to pass go pointers into C that will be stored and
+// used in callbacks and suggests we use a value lookup for pointer callbacks.
+// https://github.com/golang/proposal/blob/master/design/12416-cgo-pointers.md
+
+// Concurrent safe map for mapping pointers between C and Go.
+type decoderPtrMap struct {
+	sync.RWMutex
+	ptrs map[uintptr]*Decoder
+}
+
+func (m decoderPtrMap) get(d *C.FLAC__StreamDecoder) *Decoder {
+	ptr := uintptr(unsafe.Pointer(d))
+	m.RLock()
+	defer m.RUnlock()
+	return m.ptrs[ptr]
+}
+
+func (m decoderPtrMap) add(d *Decoder) {
+	m.Lock()
+	defer m.Unlock()
+	m.ptrs[uintptr(unsafe.Pointer(d.d))] = d
+}
+
+func (m decoderPtrMap) del(d *Decoder) {
+	m.Lock()
+	defer m.Unlock()
+	delete(m.ptrs, uintptr(unsafe.Pointer(d.d)))
+}
+
+var decoderPtrs = decoderPtrMap{ptrs: make(map[uintptr]*Decoder)}
+
+// Concurrent safe map for mapping pointers between C and Go.
+type encoderPtrMap struct {
+	sync.RWMutex
+	ptrs map[uintptr]*Encoder
+}
+
+func (m encoderPtrMap) get(e *C.FLAC__StreamEncoder) *Encoder {
+	ptr := uintptr(unsafe.Pointer(e))
+	m.RLock()
+	defer m.RUnlock()
+	return m.ptrs[ptr]
+}
+
+func (m encoderPtrMap) add(e *Encoder) {
+	m.Lock()
+	defer m.Unlock()
+	m.ptrs[uintptr(unsafe.Pointer(e.e))] = e
+}
+
+func (m encoderPtrMap) del(e *Encoder) {
+	m.Lock()
+	defer m.Unlock()
+	delete(m.ptrs, uintptr(unsafe.Pointer(e.e)))
+}
+
+var encoderPtrs = encoderPtrMap{ptrs: make(map[uintptr]*Encoder)}
+
 type FlacWriter interface {
 	io.Writer
 	io.Closer
@@ -117,14 +176,14 @@ type Encoder struct {
 
 //export decoderErrorCallback
 func decoderErrorCallback(d *C.FLAC__StreamDecoder, status C.FLAC__StreamDecoderErrorStatus, data unsafe.Pointer) {
-	decoder := (*Decoder)(data)
+	decoder := decoderPtrs.get(d)
 	decoder.error = true
 	decoder.errorStr = C.GoString(C.get_decoder_error_str(status))
 }
 
 //export decoderMetadataCallback
 func decoderMetadataCallback(d *C.FLAC__StreamDecoder, metadata *C.FLAC__StreamMetadata, data unsafe.Pointer) {
-	decoder := (*Decoder)(data)
+	decoder := decoderPtrs.get(d)
 	if metadata._type == C.FLAC__METADATA_TYPE_STREAMINFO {
 		decoder.Channels = int(C.get_decoder_channels(metadata))
 		decoder.Depth = int(C.get_decoder_depth(metadata))
@@ -134,7 +193,7 @@ func decoderMetadataCallback(d *C.FLAC__StreamDecoder, metadata *C.FLAC__StreamM
 
 //export decoderWriteCallback
 func decoderWriteCallback(d *C.FLAC__StreamDecoder, frame *C.FLAC__Frame, buffer **C.FLAC__int32, data unsafe.Pointer) C.FLAC__StreamDecoderWriteStatus {
-	decoder := (*Decoder)(data)
+	decoder := decoderPtrs.get(d)
 	blocksize := int(frame.header.blocksize)
 	decoder.frame = new(Frame)
 	f := decoder.frame
@@ -148,7 +207,7 @@ func decoderWriteCallback(d *C.FLAC__StreamDecoder, frame *C.FLAC__Frame, buffer
 
 //export decoderReadCallback
 func decoderReadCallback(d *C.FLAC__StreamDecoder, buffer *C.FLAC__byte, bytes *C.size_t, data unsafe.Pointer) C.FLAC__StreamDecoderReadStatus {
-	decoder := (*Decoder)(data)
+	decoder := decoderPtrs.get(d)
 	numBytes := int(*bytes)
 	if numBytes <= 0 {
 		return C.FLAC__STREAM_DECODER_READ_STATUS_ABORT
@@ -183,10 +242,11 @@ func NewDecoder(name string) (d *Decoder, err error) {
 		(C.FLAC__StreamDecoderWriteCallback)(unsafe.Pointer(C.decoderWriteCallback_cgo)),
 		(C.FLAC__StreamDecoderMetadataCallback)(unsafe.Pointer(C.decoderMetadataCallback_cgo)),
 		(C.FLAC__StreamDecoderErrorCallback)(unsafe.Pointer(C.decoderErrorCallback_cgo)),
-		unsafe.Pointer(d))
+		nil)
 	if status != C.FLAC__STREAM_DECODER_INIT_STATUS_OK {
 		return nil, errors.New("failed to open file")
 	}
+	decoderPtrs.add(d)
 	ret := C.FLAC__stream_decoder_process_until_end_of_metadata(d.d)
 	if ret == 0 || d.error == true || d.Channels == 0 {
 		return nil, fmt.Errorf("failed to process metadata %s", d.errorStr)
@@ -209,10 +269,11 @@ func NewDecoderReader(reader io.ReadCloser) (d *Decoder, err error) {
 		(C.FLAC__StreamDecoderWriteCallback)(unsafe.Pointer(C.decoderWriteCallback_cgo)),
 		(C.FLAC__StreamDecoderMetadataCallback)(unsafe.Pointer(C.decoderMetadataCallback_cgo)),
 		(C.FLAC__StreamDecoderErrorCallback)(unsafe.Pointer(C.decoderErrorCallback_cgo)),
-		unsafe.Pointer(d))
+		nil)
 	if status != C.FLAC__STREAM_DECODER_INIT_STATUS_OK {
 		return nil, errors.New("failed to open stream")
 	}
+	decoderPtrs.add(d)
 	ret := C.FLAC__stream_decoder_process_until_end_of_metadata(d.d)
 	if ret == 0 || d.error == true || d.Channels == 0 {
 		return nil, fmt.Errorf("failed to process metadata %s", d.errorStr)
@@ -225,6 +286,7 @@ func (d *Decoder) Close() {
 	if d.d != nil {
 		C.FLAC__stream_decoder_delete(d.d)
 		d.d = nil
+		decoderPtrs.del(d)
 	}
 	if d.reader != nil {
 		d.reader.Close()
@@ -260,6 +322,7 @@ func NewEncoder(name string, channels int, depth int, rate int) (e *Encoder, err
 	if e.e == nil {
 		return nil, errors.New("failed to create decoder")
 	}
+	encoderPtrs.add(e)
 	c := C.CString(name)
 	defer C.free(unsafe.Pointer(c))
 	runtime.SetFinalizer(e, (*Encoder).Close)
@@ -278,7 +341,7 @@ func NewEncoder(name string, channels int, depth int, rate int) (e *Encoder, err
 
 //export encoderWriteCallback
 func encoderWriteCallback(e *C.FLAC__StreamEncoder, buffer *C.FLAC__byte, bytes C.size_t, samples, current_frame C.unsigned, data unsafe.Pointer) C.FLAC__StreamEncoderWriteStatus {
-	encoder := (*Encoder)(data)
+	encoder := encoderPtrs.get(e)
 	numBytes := int(bytes)
 	if numBytes <= 0 {
 		return C.FLAC__STREAM_DECODER_READ_STATUS_ABORT
@@ -298,7 +361,7 @@ func encoderWriteCallback(e *C.FLAC__StreamEncoder, buffer *C.FLAC__byte, bytes 
 
 //export encoderSeekCallback
 func encoderSeekCallback(e *C.FLAC__StreamEncoder, absPos C.FLAC__uint64, data unsafe.Pointer) C.FLAC__StreamEncoderWriteStatus {
-	encoder := (*Encoder)(data)
+	encoder := encoderPtrs.get(e)
 	_, err := encoder.writer.Seek(int64(absPos), 0)
 	if err != nil {
 		return C.FLAC__STREAM_ENCODER_SEEK_STATUS_ERROR
@@ -308,7 +371,7 @@ func encoderSeekCallback(e *C.FLAC__StreamEncoder, absPos C.FLAC__uint64, data u
 
 //export encoderTellCallback
 func encoderTellCallback(e *C.FLAC__StreamEncoder, absPos *C.FLAC__uint64, data unsafe.Pointer) C.FLAC__StreamEncoderWriteStatus {
-	encoder := (*Encoder)(data)
+	encoder := encoderPtrs.get(e)
 	newPos, err := encoder.writer.Seek(0, 1)
 	if err != nil {
 		return C.FLAC__STREAM_ENCODER_TELL_STATUS_ERROR
@@ -330,6 +393,7 @@ func NewEncoderWriter(writer FlacWriter, channels int, depth int, rate int) (e *
 	if e.e == nil {
 		return nil, errors.New("failed to create decoder")
 	}
+	encoderPtrs.add(e)
 	e.writer = writer
 	runtime.SetFinalizer(e, (*Encoder).Close)
 	C.FLAC__stream_encoder_set_channels(e.e, C.uint(channels))
@@ -339,7 +403,7 @@ func NewEncoderWriter(writer FlacWriter, channels int, depth int, rate int) (e *
 		(C.FLAC__StreamEncoderWriteCallback)(unsafe.Pointer(C.encoderWriteCallback_cgo)),
 		(C.FLAC__StreamEncoderSeekCallback)(unsafe.Pointer(C.encoderSeekCallback_cgo)),
 		(C.FLAC__StreamEncoderTellCallback)(unsafe.Pointer(C.encoderTellCallback_cgo)),
-		nil, unsafe.Pointer(e))
+		nil, nil)
 	if status != C.FLAC__STREAM_ENCODER_INIT_STATUS_OK {
 		return nil, errors.New("failed to open file")
 	}
@@ -369,6 +433,7 @@ func (e *Encoder) Close() {
 	if e.e != nil {
 		C.FLAC__stream_encoder_finish(e.e)
 		e.e = nil
+		encoderPtrs.del(e)
 	}
 	if e.writer != nil {
 		e.writer.Close()

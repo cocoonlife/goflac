@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/jbert/testify/assert"
+	"github.com/cocoonlife/testify/assert"
 )
 
 func TestDecode(t *testing.T) {

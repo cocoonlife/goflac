@@ -285,8 +285,8 @@ func NewDecoderReader(reader io.ReadCloser) (d *Decoder, err error) {
 func (d *Decoder) Close() {
 	if d.d != nil {
 		C.FLAC__stream_decoder_delete(d.d)
-		d.d = nil
 		decoderPtrs.del(d)
+		d.d = nil
 	}
 	if d.reader != nil {
 		d.reader.Close()
@@ -432,8 +432,8 @@ func (e *Encoder) WriteFrame(f Frame) (err error) {
 func (e *Encoder) Close() {
 	if e.e != nil {
 		C.FLAC__stream_encoder_finish(e.e)
-		e.e = nil
 		encoderPtrs.del(e)
+		e.e = nil
 	}
 	if e.writer != nil {
 		e.writer.Close()

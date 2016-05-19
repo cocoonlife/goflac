@@ -248,7 +248,7 @@ func NewDecoder(name string) (d *Decoder, err error) {
 	}
 	decoderPtrs.add(d)
 	ret := C.FLAC__stream_decoder_process_until_end_of_metadata(d.d)
-	if ret == 0 || d.error == true || d.Channels == 0 {
+	if ret == 0 || d.error || d.Channels == 0 {
 		return nil, fmt.Errorf("failed to process metadata %s", d.errorStr)
 	}
 	return
@@ -275,7 +275,7 @@ func NewDecoderReader(reader io.ReadCloser) (d *Decoder, err error) {
 	}
 	decoderPtrs.add(d)
 	ret := C.FLAC__stream_decoder_process_until_end_of_metadata(d.d)
-	if ret == 0 || d.error == true || d.Channels == 0 {
+	if ret == 0 || d.error || d.Channels == 0 {
 		return nil, fmt.Errorf("failed to process metadata %s", d.errorStr)
 	}
 	return
@@ -297,7 +297,7 @@ func (d *Decoder) Close() {
 // ReadFrame reads a frame of audio data from the decoder.
 func (d *Decoder) ReadFrame() (f *Frame, err error) {
 	ret := C.FLAC__stream_decoder_process_single(d.d)
-	if ret == 0 || d.error == true {
+	if ret == 0 || d.error {
 		return nil, errors.New("error reading frame")
 	}
 	state := C.FLAC__stream_decoder_get_state(d.d)

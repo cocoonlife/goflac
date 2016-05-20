@@ -91,20 +91,20 @@ type decoderPtrMap struct {
 	ptrs map[uintptr]*Decoder
 }
 
-func (m decoderPtrMap) get(d *C.FLAC__StreamDecoder) *Decoder {
+func (m *decoderPtrMap) get(d *C.FLAC__StreamDecoder) *Decoder {
 	ptr := uintptr(unsafe.Pointer(d))
 	m.RLock()
 	defer m.RUnlock()
 	return m.ptrs[ptr]
 }
 
-func (m decoderPtrMap) add(d *Decoder) {
+func (m *decoderPtrMap) add(d *Decoder) {
 	m.Lock()
 	defer m.Unlock()
 	m.ptrs[uintptr(unsafe.Pointer(d.d))] = d
 }
 
-func (m decoderPtrMap) del(d *Decoder) {
+func (m *decoderPtrMap) del(d *Decoder) {
 	m.Lock()
 	defer m.Unlock()
 	delete(m.ptrs, uintptr(unsafe.Pointer(d.d)))

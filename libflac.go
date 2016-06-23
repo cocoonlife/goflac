@@ -118,20 +118,20 @@ type encoderPtrMap struct {
 	ptrs map[uintptr]*Encoder
 }
 
-func (m encoderPtrMap) get(e *C.FLAC__StreamEncoder) *Encoder {
+func (m *encoderPtrMap) get(e *C.FLAC__StreamEncoder) *Encoder {
 	ptr := uintptr(unsafe.Pointer(e))
 	m.RLock()
 	defer m.RUnlock()
 	return m.ptrs[ptr]
 }
 
-func (m encoderPtrMap) add(e *Encoder) {
+func (m *encoderPtrMap) add(e *Encoder) {
 	m.Lock()
 	defer m.Unlock()
 	m.ptrs[uintptr(unsafe.Pointer(e.e))] = e
 }
 
-func (m encoderPtrMap) del(e *Encoder) {
+func (m *encoderPtrMap) del(e *Encoder) {
 	m.Lock()
 	defer m.Unlock()
 	delete(m.ptrs, uintptr(unsafe.Pointer(e.e)))

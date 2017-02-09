@@ -432,6 +432,7 @@ func (e *Encoder) WriteFrame(f Frame) (err error) {
 func (e *Encoder) Close() {
 	if e.e != nil {
 		C.FLAC__stream_encoder_finish(e.e)
+		C.FLAC__stream_encoder_delete(e.e)
 		encoderPtrs.del(e)
 		e.e = nil
 	}

@@ -436,8 +436,5 @@ func (e *Encoder) Close() {
 		encoderPtrs.del(e)
 		e.e = nil
 	}
-	if e.writer != nil {
-		e.writer.Close()
-	}
 	runtime.SetFinalizer(e, nil)
 }
